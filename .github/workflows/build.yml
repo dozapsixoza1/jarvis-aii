@@ -1,24 +1,22 @@
-name: Build Flutter APK
+name: Build APK
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:   # ручной запуск
   push:
-    paths:
-      - 'groq_chat_app.zip'
+    branches: [ main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Extract ZIP
+      - name: Extract ZIP if exists
         run: |
           if [ -f groq_chat_app.zip ]; then
+            echo "Extracting zip..."
             unzip -o groq_chat_app.zip
             if [ -d groq_chat_app ]; then
               cp -r groq_chat_app/* .
@@ -26,8 +24,9 @@ jobs:
             fi
             rm -f groq_chat_app.zip
           else
-            echo "ZIP not found, assuming project is already extracted"
+            echo "No zip found, using existing files"
           fi
+          ls -la
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -38,11 +37,14 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
+          flutter-version: '3.24.3'
           channel: 'stable'
           cache: true
 
-      - name: Get dependencies
+      - name: Flutter doctor
+        run: flutter doctor -v
+
+      - name: Get packages
         run: flutter pub get
 
       - name: Build APK
@@ -53,11 +55,3 @@ jobs:
         with:
           name: app-release
           path: build/app/outputs/flutter-apk/app-release.apk
-
-      - name: Commit extracted project (optional)
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add .
-          git commit -m "Extract Flutter project + build APK" || echo "No changes to commit"
-          git push || true
